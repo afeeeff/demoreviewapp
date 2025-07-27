@@ -429,7 +429,7 @@ exports.submitReview = async (req, res) => {
     console.log(`Review saved: ${newReview._id}. Voice URL: ${newReview.voiceData}. Invoice URL: ${newReview.invoiceFileUrl}. Transcribed Text: ${newReview.transcribedText}`);
 
     // --- NEW: Dynamic Email Trigger for ratings 1-8 ---
-    if (parseInt(rating) >= 1 && parseInt(rating) <= 8) {
+    if (parseInt(rating) >= 0 && parseInt(rating) <= 8) {
       console.log(`Rating is ${rating}, triggering email notification.`);
 
       // Fetch notification emails from Client, Branch, and Company

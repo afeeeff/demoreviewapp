@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend
+  PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend, LabelList
 } from 'recharts';
 
 // --- STYLING (Moved outside the component for better scope management) ---
@@ -77,6 +77,7 @@ const Dashboard = ({
 
   // Function to get appropriate emoji for rating buttons (for table display)
   const getRatingEmoji = (rating) => {
+    if (rating === 0) return '😡';
     if (rating === 1) return '😡';
     if (rating === 2) return '😠';
     if (rating === 3) return '😞';
@@ -84,7 +85,7 @@ const Dashboard = ({
     if (rating === 5) return '😕';
     if (rating === 6) return '🙂';
     if (rating === 7) return '😊';
-    if (rating === 8) return '�';
+    if (rating === 8) return '😄';
     if (rating === 9) return '🤩';
     if (rating === 10) return '✨';
     return '';
@@ -165,7 +166,7 @@ const Dashboard = ({
     }
     const total = reviews.length;
     const promotersCount = reviews.filter(r => r.rating === 9 || r.rating === 10).length;
-    const detractorsCount = reviews.filter(r => r.rating >= 1 && r.rating <= 6).length;
+    const detractorsCount = reviews.filter(r => r.rating >= 0 && r.rating <= 6).length;
     const neutralCount = reviews.filter(r => r.rating === 7 || r.rating === 8).length;
     setResponders(total);
     setPromoters({ count: promotersCount, pct: total ? ((promotersCount / total) * 100).toFixed(1) : 0 });
@@ -174,12 +175,12 @@ const Dashboard = ({
     setTnps(total ? ((promotersCount - detractorsCount) / total * 100).toFixed(1) : 0);
     const rc = {}; let sum = 0;
     reviews.forEach(r => { rc[r.rating] = (rc[r.rating] || 0) + 1; sum += r.rating; });
-    setRatingDistributionData(Array.from({ length: 10 }, (_, i) => ({ rating: i + 1, count: rc[i + 1] || 0 })));
+    setRatingDistributionData(Array.from({ length: 11 }, (_, i) => ({ rating: i, count: rc[i] || 0 })));
     setAverageRating(total ? (sum / total).toFixed(2) : 0);
     setFeedbackTypeData([
       { name: 'Promoters (9–10)', value: promotersCount },
       { name: 'Neutral (7–8)', value: neutralCount },
-      { name: 'Detractors (1–6)', value: detractorsCount }
+      { name: 'Detractors (0–6)', value: detractorsCount }
     ]);
 
     // Calculate Reviews Over Time (Line Chart)
@@ -222,7 +223,7 @@ const Dashboard = ({
         // Handle commas and quotes in transcribed text for CSV
         const transcribedText = review.transcribedText ? `"${review.transcribedText.replace(/"/g, '""')}"` : 'N/A';
         const createdAt = review.createdAt ? formatDate(review.createdAt) : 'N/A';
-        const rating = review.rating || 'N/A';
+        const rating = review.rating ?? 'N/A';
         const feedbackType = review.feedbackType ? review.feedbackType.charAt(0).toUpperCase() + review.feedbackType.slice(1) : 'N/A';
         const companyName = review.company?.name || 'N/A';
         const branchName = review.branch?.name || 'N/A';
@@ -354,7 +355,7 @@ const Dashboard = ({
           <div style={cardValue(COLORS_PANELS.detractors)}>
             {detractors.pct}%<sup style={{ fontSize: 15, color: "#7f1138", marginLeft: 4 }}>{detractors.count}</sup>
           </div>
-          <div style={{ fontSize: 13, color: '#d32f2f', fontWeight: 600 }}>TNPS 1–6</div>
+          <div style={{ fontSize: 13, color: '#d32f2f', fontWeight: 600 }}>TNPS 0–6</div>
         </div>
         <div style={statCard(COLORS_PANELS.neutral)}>
           <div style={cardHeading(COLORS_PANELS.neutral)}>Passives %</div>
@@ -387,13 +388,15 @@ const Dashboard = ({
           <div style={{
             fontWeight: 700, fontSize: 18, marginBottom: 12,
             color: COLORS_PANELS.tnps, letterSpacing: ".2px"
-          }}>Ratings Distribution (1–10)</div>
+          }}>Ratings Distribution (0–10)</div>
           <ResponsiveContainer width="100%" height={246}>
             <BarChart data={ratingDistributionData}>
               <XAxis dataKey="rating" tick={{ fontWeight: 'bold', fill: COLORS_PANELS.tnps, fontSize: 15 }} />
               <YAxis allowDecimals={false} tick={{ fontWeight: 'bold', fill: '#222', fontSize: 15 }} />
               <Tooltip />
-              <Bar dataKey="count" fill={COLORS_PANELS.promoters} radius={[8, 8, 0, 0]} />
+              <Bar dataKey="count" fill={COLORS_PANELS.promoters} radius={[8, 8, 0, 0]}>
+                <LabelList dataKey="count" position="top" style={{ fill: '#374151', fontWeight: 'bold' }} />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -485,7 +488,7 @@ const Dashboard = ({
           onClick={exportReviewsAsExcel}
           className="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-75"
         >
-          <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
           </svg>
           Export
@@ -500,66 +503,66 @@ const Dashboard = ({
         </div>
       )}
       {!isLoading && reviews.length > 0 && (
-        <div className="overflow-x-auto rounded-xl shadow-lg border border-gray-200 w-full"> {/* Use w-full here */}
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">Customer Data</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">Transcribed Text</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">Rating</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">Voice Audio</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {reviews.map((review) => (
-                <tr key={review._id} className="hover:bg-gray-50 transition-colors duration-200">
-                  {/* Customer Data Column */}
-                  <td className="px-6 py-4 text-base text-gray-700" data-label="Customer Data">
-                    <p className="font-semibold">{review.customerName || 'N/A'}</p>
-                    <p className="text-sm text-gray-500">Mobile: {review.customerMobile || 'N/A'}</p>
-                    {review.invoiceData ? (
-                      <div className="text-xs mt-2 space-y-1">
-                        {review.invoiceData.vin && <p><span className="font-semibold">VIN:</span> {review.invoiceData.vin}</p>}
-                        {review.invoiceData.jobCardNumber && <p><span className="font-semibold">Job Card:</span> {review.invoiceData.jobCardNumber}</p>}
-                        {review.invoiceData.invoiceNumber && <p><span className="font-semibold">Invoice No:</span> {review.invoiceData.invoiceNumber}</p>}
-                        {review.invoiceData.invoiceDate && <p><span className="font-semibold">Inv Date:</span> {formatDate(review.invoiceData.invoiceDate)}</p>}
-                        {review.invoiceFileUrl && (
-                          <a
-                            href={review.invoiceFileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline block mt-2 font-medium"
-                          >
-                            View File
-                          </a>
-                        )}
-                      </div>
-                    ) : 'N/A'}
-                  </td>
-                  {/* Transcribed Text Column */}
-                  <td className="px-6 py-4 max-w-xs overflow-hidden text-ellipsis text-sm text-gray-700" data-label="Transcribed Text">
-                    {review.transcribedText || 'N/A'}
-                  </td>
-                  {/* Date Column */}
-                  <td className="px-6 py-4 whitespace-nowrap text-base text-gray-700" data-label="Date">
-                    {review.createdAt ? new Date(review.createdAt).toLocaleDateString() : 'N/A'}
-                  </td>
-                  {/* Rating Column */}
-                  <td className="px-6 py-4 text-lg font-medium text-gray-900" data-label="Rating">
-                    {review.rating} <span className="text-2xl">{getRatingEmoji(review.rating)}</span>
-                  </td>
-                  {/* Voice Audio Column */}
-                  <td className="px-6 py-4 text-base text-gray-700" data-label="Voice Audio">
-                    {review.voiceData ? (
-                      <audio controls src={review.voiceData} className="w-full max-w-[150px] h-10 rounded-lg"></audio>
-                    ) : 'N/A'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <div className="overflow-x-auto rounded-xl shadow-lg border border-gray-200 w-full">
+  <table className="min-w-full divide-y divide-gray-200">
+    <thead className="bg-gray-100">
+      <tr>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer Name</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mobile</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">VIN</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job Card</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice No</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice Date</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice File</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transcribed Text</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Review Date</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Voice Audio</th>
+      </tr>
+    </thead>
+    <tbody className="bg-white divide-y divide-gray-200">
+      {reviews.map((review) => (
+        <tr key={review._id} className="hover:bg-gray-50 transition-colors duration-200">
+
+          {/* Individual columns for customer and invoice data */}
+          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{review.customerName || 'N/A'}</td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{review.customerMobile || 'N/A'}</td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{review.invoiceData?.vin || 'N/A'}</td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{review.invoiceData?.jobCardNumber || 'N/A'}</td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{review.invoiceData?.invoiceNumber || 'N/A'}</td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{review.invoiceData?.invoiceDate ? formatDate(review.invoiceData.invoiceDate) : 'N/A'}</td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600">
+            {review.invoiceFileUrl ? (
+              <a href={review.invoiceFileUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                View File
+              </a>
+            ) : ('N/A')}
+          </td>
+          
+          {/* Transcribed Text in a vertically scrolling container */}
+          <td className="px-6 py-4 text-sm text-gray-700">
+            <div className="h-24 w-96 overflow-y-auto whitespace-normal break-words">
+              {review.transcribedText || 'N/A'}
+            </div>
+          </td>
+          
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{review.createdAt ? new Date(review.createdAt).toLocaleDateString() : 'N/A'}</td>
+          
+          <td className="px-6 py-4 whitespace-nowrap text-lg font-medium text-gray-900">
+            {review.rating} <span className="text-2xl">{getRatingEmoji(review.rating)}</span>
+          </td>
+          
+          <td className="px-6 py-4 whitespace-nowrap">
+            {review.voiceData ? (
+              <audio controls src={review.voiceData} className="w-full max-w-[250px] h-10 rounded-lg"></audio>
+            ) : 'N/A'}
+          </td>
+
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
       )}
 
       {/* Error below the grid */}

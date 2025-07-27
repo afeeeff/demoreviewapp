@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line
+  PieChart, Pie, Cell, LineChart, Line, LabelList
 } from 'recharts';
 import jsPDF from 'jspdf'; // Import jsPDF
 import 'jspdf-autotable'; // Import jspdf-autotable
@@ -142,7 +142,7 @@ const ClientDashboard = ({
 
     // Calculate TNPS and other stats
     const promotersCount = reviews.filter(r => r.rating === 9 || r.rating === 10).length;
-    const detractorsCount = reviews.filter(r => r.rating >= 1 && r.rating <= 6).length;
+    const detractorsCount = reviews.filter(r => r.rating >= 0 && r.rating <= 6).length; // FIX: Included 0 rating
     const neutralCount = reviews.filter(r => r.rating === 7 || r.rating === 8).length;
 
     setResponders(total);
@@ -159,7 +159,7 @@ const ClientDashboard = ({
       totalRatingSum += review.rating;
     });
 
-    const processedRatingData = Array.from({ length: 10 }, (_, i) => i + 1).map(rating => ({
+    const processedRatingData = Array.from({ length: 11 }, (_, i) => i).map(rating => ({ // FIX: Creates bars for 0-10
       rating: rating,
       count: ratingCounts[rating] || 0,
     }));
@@ -203,6 +203,7 @@ const ClientDashboard = ({
 
   // Function to get appropriate emoji for rating buttons (for table display)
   const getRatingEmoji = (rating) => {
+    if (rating === 0) return '😡';
     if (rating === 1) return '😡';
     if (rating === 2) return '😠';
     if (rating === 3) return '😞';
@@ -247,7 +248,7 @@ const ClientDashboard = ({
         // Handle commas and quotes in transcribed text for CSV
         const transcribedText = review.transcribedText ? `"${review.transcribedText.replace(/"/g, '""')}"` : 'N/A';
         const createdAt = review.createdAt ? formatDate(review.createdAt) : 'N/A';
-        const rating = review.rating || 'N/A';
+        const rating = review.rating ?? 'N/A'; // Use ?? to handle 0 correctly
         const feedbackType = review.feedbackType ? review.feedbackType.charAt(0).toUpperCase() + review.feedbackType.slice(1) : 'N/A';
 
         return [
@@ -294,7 +295,7 @@ const ClientDashboard = ({
         review.invoiceData?.invoiceDate ? formatDate(review.invoiceData.invoiceDate) : 'N/A',
         review.transcribedText || 'N/A',
         review.createdAt ? formatDate(review.createdAt) : 'N/A',
-        review.rating || 'N/A',
+        review.rating ?? 'N/A', // Use ?? to handle 0 correctly
         review.feedbackType ? review.feedbackType.charAt(0).toUpperCase() + review.feedbackType.slice(1) : 'N/A'
       ];
       tableRows.push(reviewData);
@@ -426,7 +427,7 @@ const ClientDashboard = ({
               <div style={cardValue(COLORS_PANELS.detractors)}>
                 {detractors.pct}%<sup style={{ fontSize: 15, color: "#7f1138", marginLeft: 4 }}>{detractors.count}</sup>
               </div>
-              <div style={{ fontSize: 13, color: COLORS_PANELS.detractors, fontWeight: 600 }}>TNPS 1–6</div>
+              <div style={{ fontSize: 13, color: COLORS_PANELS.detractors, fontWeight: 600 }}>TNPS 0–6</div>
             </div>
             <div style={statCard(COLORS_PANELS.neutral)}>
               <div style={cardHeading(COLORS_PANELS.neutral)}>Passives %</div>
@@ -437,14 +438,7 @@ const ClientDashboard = ({
             </div>
           </div>
 
-          {/* Average Rating */}
-          <div style={{
-            fontSize: 17, color: COLORS_PANELS.promoters, marginBottom: 19,
-            fontWeight: 700, letterSpacing: ".5px"
-          }}>
-            <span style={{ color: "#253" }}>Average Rating:</span>{" "}
-            {averageRating}
-          </div>
+          
 
           {/* CHARTS: Responsive */}
           <div style={{
@@ -459,13 +453,15 @@ const ClientDashboard = ({
               <div style={{
                 fontWeight: 700, fontSize: 18, marginBottom: 12,
                 color: COLORS_PANELS.tnps, letterSpacing: ".2px"
-              }}>Ratings Distribution (1–10)</div>
+              }}>Ratings Distribution (0–10)</div>
               <ResponsiveContainer width="100%" height={246}>
                 <BarChart data={ratingDistributionData}>
                   <XAxis dataKey="rating" tick={{ fontWeight: 'bold', fill: COLORS_PANELS.tnps, fontSize: 15 }} />
                   <YAxis allowDecimals={false} tick={{ fontWeight: 'bold', fill: '#222', fontSize: 15 }} />
                   <Tooltip />
-                  <Bar dataKey="count" fill={COLORS_PANELS.promoters} radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="count" fill={COLORS_PANELS.promoters} radius={[8, 8, 0, 0]}>
+                    <LabelList dataKey="count" position="top" style={{ fill: '#374151', fontWeight: 'bold' }} />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -577,66 +573,63 @@ const ClientDashboard = ({
             </div>
           </div>
           {reviews.length > 0 && (
-            <div className="overflow-x-auto rounded-xl shadow-lg border border-gray-200 w-full"> {/* Use w-full here */}
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">Customer Data</th> {/* Changed header */}
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">Transcribed Text</th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">Date</th> {/* Moved Date */}
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">Rating</th> {/* Moved Rating */}
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">Voice Audio</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {reviews.map((review) => (
-                    <tr key={review._id} className="hover:bg-gray-50 transition-colors duration-200">
-                      {/* Customer Data Column */}
-                      <td className="px-6 py-4 text-base text-gray-700" data-label="Customer Data">
-                        <p className="font-semibold">{review.customerName || 'N/A'}</p>
-                        <p className="text-sm text-gray-500">Mobile: {review.customerMobile || 'N/A'}</p>
-                        {review.invoiceData ? (
-                          <div className="text-xs mt-2 space-y-1">
-                            {review.invoiceData.vin && <p><span className="font-semibold">VIN:</span> {review.invoiceData.vin}</p>}
-                            {review.invoiceData.jobCardNumber && <p><span className="font-semibold">Job Card:</span> {review.invoiceData.jobCardNumber}</p>}
-                            {review.invoiceData.invoiceNumber && <p><span className="font-semibold">Invoice No:</span> {review.invoiceData.invoiceNumber}</p>}
-                            {review.invoiceData.invoiceDate && <p><span className="font-semibold">Inv Date:</span> {formatDate(review.invoiceData.invoiceDate)}</p>}
-                            {review.invoiceFileUrl && (
-                              <a
-                                href={review.invoiceFileUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline block mt-2 font-medium"
-                              >
-                                View Invoice File
-                              </a>
-                            )}
-                          </div>
-                        ) : 'N/A'}
-                      </td>
-                      {/* Transcribed Text Column */}
-                      <td className="px-6 py-4 max-w-xs overflow-hidden text-ellipsis text-sm text-gray-700" data-label="Transcribed Text">
-                        {review.transcribedText || 'N/A'}
-                      </td>
-                      {/* Date Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-base text-gray-700" data-label="Date">
-                        {review.createdAt ? formatDate(review.createdAt) : 'N/A'}
-                      </td>
-                      {/* Rating Column */}
-                      <td className="px-6 py-4 text-lg font-medium text-gray-900" data-label="Rating">
-                        {review.rating} <span className="text-2xl">{getRatingEmoji(review.rating)}</span>
-                      </td>
-                      {/* Voice Audio Column */}
-                      <td className="px-6 py-4 text-base text-gray-700" data-label="Voice Audio">
-                        {review.voiceData ? (
-                          <audio controls src={review.voiceData} className="w-full max-w-[150px] h-10 rounded-lg"></audio>
-                        ) : 'N/A'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="overflow-x-auto rounded-xl shadow-lg border border-gray-200 w-full">
+  <table className="min-w-full divide-y divide-gray-200">
+    <thead className="bg-gray-100">
+      <tr>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer Name</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mobile</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">VIN</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job Card</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice No</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice Date</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice File</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transcribed Text</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Review Date</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Voice Audio</th>
+      </tr>
+    </thead>
+    <tbody className="bg-white divide-y divide-gray-200">
+      {reviews.map((review) => (
+        <tr key={review._id} className="hover:bg-gray-50 transition-colors duration-200">
+          
+          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{review.customerName || 'N/A'}</td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{review.customerMobile || 'N/A'}</td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{review.invoiceData?.vin || 'N/A'}</td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{review.invoiceData?.jobCardNumber || 'N/A'}</td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{review.invoiceData?.invoiceNumber || 'N/A'}</td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{review.invoiceData?.invoiceDate ? formatDate(review.invoiceData.invoiceDate) : 'N/A'}</td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600">
+            {review.invoiceFileUrl ? (
+              <a href={review.invoiceFileUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                View File
+              </a>
+            ) : ('N/A')}
+          </td>
+          
+          {/* FIX: Transcribed Text now has a scrolling container */}
+          <td className="px-6 py-4 text-sm text-gray-700">
+            <div className="h-24 w-96 overflow-y-auto whitespace-normal break-words">
+                {review.transcribedText || 'N/A'}
             </div>
+          </td>
+          
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{review.createdAt ? formatDate(review.createdAt) : 'N/A'}</td>
+          <td className="px-6 py-4 whitespace-nowrap text-lg font-medium text-gray-900">
+            {review.rating ?? 'N/A'} <span className="text-2xl">{getRatingEmoji(review.rating)}</span>
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap">
+            {review.voiceData ? (
+              <audio controls src={review.voiceData} className="w-full max-w-[250px] h-10 rounded-lg"></audio>
+            ) : 'N/A'}
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+          
           )}
         </>
       )}

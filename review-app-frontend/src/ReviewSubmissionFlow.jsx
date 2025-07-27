@@ -169,7 +169,7 @@ const ReviewSubmissionFlow = ({
     setRecordingError('');
     stopRecording(); // Stop any ongoing recording if rating changes
 
-    if (rating >= 1 && rating <= 8) {
+    if (rating >= 0 && rating <= 8) {
       setCurrentStep('voiceRecording');
     } else {
       handleSubmitReview(rating, null); // Directly submit with no voice
@@ -395,7 +395,7 @@ const ReviewSubmissionFlow = ({
   };
 
   useEffect(() => {
-    if (audioBlob && !isRecording && customerRating > 0 && currentStep === 'voiceRecording') {
+    if (audioBlob && !isRecording && customerRating >= 0 && currentStep === 'voiceRecording') {
       setIsSubmitting(true);
       handleSubmitReview(customerRating, audioBlob);
     }
@@ -494,6 +494,7 @@ const ReviewSubmissionFlow = ({
 
   // Function to get appropriate emoji for rating buttons
   const getRatingEmoji = (rating) => {
+    if (rating === 0) return '😡'
     if (rating === 1) return '😡';
     if (rating === 2) return '😠';
     if (rating === 3) return '😟';
@@ -809,7 +810,7 @@ const ReviewSubmissionFlow = ({
 
           <div className="flex flex-col items-center w-full max-w-7xl mb-10 space-y-6">
             <div className="flex justify-center flex-wrap gap-6 w-full">
-              {renderRatingButtons(1, 5)}
+              {renderRatingButtons(0, 5)}
             </div>
             <div className="flex justify-center flex-wrap gap-6 w-full">
               {renderRatingButtons(6, 10)}

@@ -209,10 +209,7 @@ const ClientStatistics = ({
               <p className="text-gray-500 text-sm">Total Reviews</p>
               <p className="text-3xl font-bold text-indigo-700">{totalReviews}</p>
             </div>
-            <div>
-              <p className="text-gray-500 text-sm">Average Rating</p>
-              <p className="text-3xl font-bold text-indigo-700">{averageRating}</p>
-            </div>
+            
           </div>
 
           {/* Rating Distribution Bar Chart */}

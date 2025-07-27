@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line
+  PieChart, Pie, Cell, LineChart, Line, LabelList // FIX: Import LabelList
 } from 'recharts';
 
-// --- STYLING ---
+// --- STYLING & HELPERS ---
 const COLORS_PANELS = {
   tnps: '#1565c0',
   responders: '#607d8b',
@@ -12,14 +12,38 @@ const COLORS_PANELS = {
   neutral: '#ffb300',
   detractors: '#d32f2f'
 };
-const PIE_COLORS = ['#388e3c', '#ffb300', '#d32f2f']; // Green, Amber, Red (for Promoters, Neutral, Detractors)
+const PIE_COLORS = ['#4CAF50', '#FFC107', '#F44336']; // Green, Amber, Red for Pie Chart
 const FONT_FAMILY = '"Inter", "Segoe UI", "Roboto", Arial, sans-serif';
+
+// Helper function to format date to DD/MM/YYYY
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
+  return new Date(dateString).toLocaleDateString('en-GB', options);
+};
+
+// Function to get appropriate emoji for rating buttons
+const getRatingEmoji = (rating) => {
+    if (rating === 0) return '😡';
+    if (rating === 1) return '😡';
+    if (rating === 2) return '😠';
+    if (rating === 3) return '😞';
+    if (rating === 4) return '😐';
+    if (rating === 5) return '😕';
+    if (rating === 6) return '🙂';
+    if (rating === 7) return '😊';
+    if (rating === 8) return '😄';
+    if (rating === 9) return '🤩';
+    if (rating === 10) return '✨';
+    return '';
+};
+
 
 const Dashboard = ({
   userData, API_BASE_URL, isLoading, error, successMessage,
   setIsLoading, setError, setSuccessMessage,
-  filteredClients, // Passed from App.jsx for client filter dropdown
-  fetchClientsForBranchAdminFilters, // Passed from App.jsx to update filteredClients
+  filteredClients,
+  fetchClientsForBranchAdminFilters,
 }) => {
   // Filter states
   const [filterClientId, setFilterClientId] = useState('');
@@ -47,36 +71,25 @@ const Dashboard = ({
     'Authorization': `Bearer ${userData?.token}`,
   }), [userData?.token]);
 
-  // Fetch reviews (filtered) for the branch admin scope
+  // Fetch reviews for the branch admin scope
   const fetchBranchReviews = useCallback(async () => {
     setIsLoading(true);
     setError('');
     try {
       let url = `${API_BASE_URL}/branch/reviews?`;
-      if (filterClientId) {
-        url += `clientId=${filterClientId}&`;
-      }
-      if (filterStartDate) {
-        url += `startDate=${filterStartDate}&`;
-      }
-      if (filterEndDate) {
-        url += `endDate=${filterEndDate}&`;
-      }
+      if (filterClientId) url += `clientId=${filterClientId}&`;
+      if (filterStartDate) url += `startDate=${filterStartDate}&`;
+      if (filterEndDate) url += `endDate=${filterEndDate}&`;
 
-      const response = await fetch(url, {
-        headers: getAuthHeaders(),
-      });
+      const response = await fetch(url, { headers: getAuthHeaders() });
       const data = await response.json();
       if (response.ok) {
-        setReviews(data); // Store raw reviews for processing
-        console.log("Dashboard (Branch Admin): Reviews fetched:", data);
+        setReviews(data);
       } else {
         setError(data.message || 'Failed to fetch reviews.');
         setReviews([]);
-        console.error("Dashboard (Branch Admin): Failed to fetch reviews:", data.message);
       }
     } catch (err) {
-      console.error('Dashboard (Branch Admin): Error fetching reviews:', err);
       setError('Network error fetching reviews.');
       setReviews([]);
     } finally {
@@ -84,16 +97,15 @@ const Dashboard = ({
     }
   }, [API_BASE_URL, filterClientId, filterStartDate, filterEndDate, getAuthHeaders, setIsLoading, setError]);
 
-  // Effect to trigger review fetching and client dropdown data fetching
+  // Effect to trigger review fetching
   useEffect(() => {
     if (userData?.token && userData?.branchId) {
       fetchBranchReviews();
-      // Fetch clients for the filter dropdowns (Branch Admin can only see their own clients)
       fetchClientsForBranchAdminFilters();
     }
   }, [filterClientId, filterStartDate, filterEndDate, userData, fetchBranchReviews, fetchClientsForBranchAdminFilters]);
 
-  // Process reviews data for charts and statistics whenever reviews state changes
+  // Process reviews data for charts and statistics
   useEffect(() => {
     if (!reviews || reviews.length === 0) {
       setResponders(0); setPromoters({ count: 0, pct: 0 }); setDetractors({ count: 0, pct: 0 });
@@ -105,9 +117,9 @@ const Dashboard = ({
     const total = reviews.length;
     setTotalReviews(total);
 
-    // Calculate TNPS and other stats
+    // FIX: Update calculations to include 0 rating
     const promotersCount = reviews.filter(r => r.rating === 9 || r.rating === 10).length;
-    const detractorsCount = reviews.filter(r => r.rating >= 1 && r.rating <= 6).length;
+    const detractorsCount = reviews.filter(r => r.rating >= 0 && r.rating <= 6).length;
     const neutralCount = reviews.filter(r => r.rating === 7 || r.rating === 8).length;
 
     setResponders(total);
@@ -116,7 +128,6 @@ const Dashboard = ({
     setNeutral({ count: neutralCount, pct: total ? ((neutralCount / total) * 100).toFixed(1) : 0 });
     setTnps(total ? ((promotersCount - detractorsCount) / total * 100).toFixed(1) : 0);
 
-    // Calculate Rating Distribution (Bar Chart)
     const ratingCounts = {};
     let totalRatingSum = 0;
     reviews.forEach(review => {
@@ -124,39 +135,32 @@ const Dashboard = ({
       totalRatingSum += review.rating;
     });
 
-    const processedRatingData = Array.from({ length: 10 }, (_, i) => i + 1).map(rating => ({
+    // FIX: Generate bar chart data for ratings 0-10
+    const processedRatingData = Array.from({ length: 11 }, (_, i) => i).map(rating => ({
       rating: rating,
       count: ratingCounts[rating] || 0,
     }));
     setRatingDistributionData(processedRatingData);
     setAverageRating(total ? (totalRatingSum / total).toFixed(2) : 0);
-
-    // Calculate Feedback Type Distribution (Pie Chart)
+    
     const feedbackCounts = {
-      positive: 0,
-      neutral: 0,
-      negative: 0,
+        positive: promotersCount,
+        neutral: neutralCount,
+        negative: detractorsCount,
     };
-    reviews.forEach(review => {
-      if (review.feedbackType && ['positive', 'neutral', 'negative'].includes(review.feedbackType)) {
-        feedbackCounts[review.feedbackType] = (feedbackCounts[review.feedbackType] || 0) + 1;
-      }
-    });
 
     const processedFeedbackTypeData = Object.keys(feedbackCounts).map(type => ({
-      name: type.charAt(0).toUpperCase() + type.slice(1), // Capitalize first letter
-      value: feedbackCounts[type],
-    })).filter(item => item.value > 0); // Only include types with reviews
+        name: type.charAt(0).toUpperCase() + type.slice(1),
+        value: feedbackCounts[type],
+    })).filter(item => item.value > 0);
     setFeedbackTypeData(processedFeedbackTypeData);
 
-    // Calculate Reviews Over Time (Line Chart)
     const dailyReviewCounts = {};
     reviews.forEach(review => {
-      const date = new Date(review.createdAt).toLocaleDateString('en-CA'); // YYYY-MM-DD
+      const date = new Date(review.createdAt).toLocaleDateString('en-CA');
       dailyReviewCounts[date] = (dailyReviewCounts[date] || 0) + 1;
     });
 
-    // Sort dates and format for line chart
     const sortedDates = Object.keys(dailyReviewCounts).sort();
     const processedReviewsOverTimeData = sortedDates.map(date => ({
       date: date,
@@ -166,55 +170,42 @@ const Dashboard = ({
 
   }, [reviews]);
 
-
-  // --- STYLES (from Superuser Dashboard) ---
+  // --- STYLES ---
   const statsPanelStyle = {
     display: "flex", gap: "17px", margin: "32px 0 36px 0", flexWrap: "wrap"
   };
   const statCard = color => ({
-    flex: '1 1 190px',
-    minWidth: 190,
-    background: "#f7fafc",
-    borderRadius: "14px",
-    boxShadow: "0 2px 10px rgba(60,130,214,0.045)",
-    textAlign: "center", padding: "22px 9px 14px 9px",
-    borderTop: `5px solid ${color}`,
-    fontFamily: FONT_FAMILY
+    flex: '1 1 190px', minWidth: 190, background: "#fff",
+    borderRadius: "14px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
+    textAlign: "center", padding: "22px 9px 14px 9px", borderTop: `5px solid ${color}`, fontFamily: FONT_FAMILY
   });
   const cardHeading = color => ({
     fontWeight: 800, fontSize: "17.5px", marginBottom: "10px", color,
-    letterSpacing: '.2px',
-    fontFamily: FONT_FAMILY
+    letterSpacing: '.2px', fontFamily: FONT_FAMILY
   });
   const cardValue = color => ({
     fontSize: 33, color, fontWeight: 900, letterSpacing: ".3px"
   });
 
-
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6">
-      {/* FILTER PANEL (Similar to Superuser Dashboard) */}
+    <div className="w-full p-8 rounded-2xl shadow-lg border border-gray-200 mx-auto font-sans bg-gray-100">
+      {/* FILTER PANEL */}
       <div style={{
-        background: "#f3e5f5", borderRadius: 13, padding: '18px 15px 12px 15px', // Changed background for branch admin
-        marginBottom: 18, boxShadow: '0 2px 12px #ab47bc11', border: "1.4px solid #ce93d8", maxWidth: '100%' // Changed shadow/border
+        background: "#f3e5f5", borderRadius: 13, padding: '18px 15px 12px 15px',
+        marginBottom: 18, boxShadow: '0 2px 12px #ab47bc11', border: "1.4px solid #ce93d8", maxWidth: '100%'
       }}>
-        <div style={{
-          fontWeight: 800, fontSize: 20, marginBottom: 15, color: "#4a148c", letterSpacing: "1.2px" // Changed color
-        }}>Dashboard Overview</div>
-        <div style={{
-          display: "flex", gap: 18, flexWrap: "wrap",
-          marginBottom: 4, alignItems: "center"
-        }}>
-          {/* Branch filter is removed as this is branch admin dashboard */}
+        <div style={{ fontWeight: 800, fontSize: 20, marginBottom: 15, color: "#4a148c", letterSpacing: "1.2px" }}>
+          Dashboard Overview
+        </div>
+        <div style={{ display: "flex", gap: 18, flexWrap: "wrap", marginBottom: 4, alignItems: "center" }}>
           <div>
-            <label style={{ fontWeight: 600, color: "#8e24aa" }}>Client:</label> {/* Changed color */}
+            <label style={{ fontWeight: 600, color: "#8e24aa" }}>Client:</label>
             <select style={{
               marginLeft: 5, minWidth: 125, padding: "7px 9px",
-              background: "#fdf8ff", borderRadius: 5, border: "1.1px solid #e1bee7", fontWeight: 500 // Changed colors
+              background: "#fdf8ff", borderRadius: 5, border: "1.1px solid #e1bee7", fontWeight: 500
             }}
               value={filterClientId} onChange={e => setFilterClientId(e.target.value)}
-              disabled={filteredClients.length === 0}
-              >
+              disabled={filteredClients.length === 0}>
               <option value="">All Clients</option>
               {filteredClients?.map(cl => <option key={cl._id} value={cl._id}>{cl.email}</option>)}
             </select>
@@ -224,21 +215,19 @@ const Dashboard = ({
             <input type="date" style={{
               marginLeft: 4, padding: "8px", borderRadius: 6,
               background: "#fffde7", border: "1.1px solid #ffd600", fontWeight: 500
-            }}
-              value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} />
+            }} value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} />
           </div>
           <div>
             <label style={{ fontWeight: 600, color: "#d84315" }}>To:</label>
             <input type="date" style={{
               marginLeft: 4, padding: "8px", borderRadius: 6,
               background: "#ffebee", border: "1.1px solid #ef9a9a", fontWeight: 500
-            }}
-              value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} />
+            }} value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} />
           </div>
         </div>
       </div>
 
-      {/* STATISTICS PANEL (Similar to Superuser Dashboard) */}
+      {/* STATISTICS PANEL */}
       <div style={statsPanelStyle}>
         <div style={statCard(COLORS_PANELS.tnps)}>
           <div style={cardHeading(COLORS_PANELS.tnps)}>Service TNPS</div>
@@ -263,7 +252,7 @@ const Dashboard = ({
           <div style={cardValue(COLORS_PANELS.detractors)}>
             {detractors.pct}%<sup style={{ fontSize: 15, color: "#7f1138", marginLeft: 4 }}>{detractors.count}</sup>
           </div>
-          <div style={{ fontSize: 13, color: '#d32f2f', fontWeight: 600 }}>TNPS 1–6</div>
+          <div style={{ fontSize: 13, color: '#d32f2f', fontWeight: 600 }}>TNPS 0–6</div> {/* FIX: Label updated */}
         </div>
         <div style={statCard(COLORS_PANELS.neutral)}>
           <div style={cardHeading(COLORS_PANELS.neutral)}>Passives %</div>
@@ -274,179 +263,104 @@ const Dashboard = ({
         </div>
       </div>
 
-      {/* Average Rating */}
-      <div style={{
-        fontSize: 17, color: COLORS_PANELS.promoters, marginBottom: 19,
-        fontWeight: 700, letterSpacing: ".5px"
-      }}>
-        <span style={{ color: "#253" }}>Average Rating:</span>{" "}
-        {averageRating}
-      </div>
-
-      {/* CHARTS: Responsive */}
-      <div style={{
-        display: "flex", gap: 34, alignItems: "stretch",
-        flexWrap: "wrap", justifyContent: "space-between", maxWidth: '100%'
-      }}>
-        {/* Bar Chart */}
+      {/* CHARTS */}
+      <div style={{ display: "flex", gap: 34, alignItems: "stretch", flexWrap: "wrap", justifyContent: "space-between", maxWidth: '100%' }}>
         <div style={{
-          flex: "3", minWidth: 350, background: "#fafbfe",
-          borderRadius: 15, padding: "17px", boxShadow: "0 2px 12px #90caf933"
+          flex: "3", minWidth: 350, background: "#fff", borderRadius: 15, padding: "17px", boxShadow: "0 2px 12px rgba(0,0,0,0.08)"
         }}>
-          <div style={{
-            fontWeight: 700, fontSize: 18, marginBottom: 12,
-            color: COLORS_PANELS.tnps, letterSpacing: ".2px"
-          }}>Ratings Distribution (1–10)</div>
+          <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 12, color: COLORS_PANELS.tnps, letterSpacing: ".2px" }}>
+            Ratings Distribution (0–10) {/* FIX: Title updated */}
+          </div>
           <ResponsiveContainer width="100%" height={246}>
             <BarChart data={ratingDistributionData}>
               <XAxis dataKey="rating" tick={{ fontWeight: 'bold', fill: COLORS_PANELS.tnps, fontSize: 15 }} />
               <YAxis allowDecimals={false} tick={{ fontWeight: 'bold', fill: '#222', fontSize: 15 }} />
               <Tooltip />
-              <Bar dataKey="count" fill={COLORS_PANELS.promoters} radius={[8, 8, 0, 0]} />
+              <Bar dataKey="count" fill={COLORS_PANELS.promoters} radius={[8, 8, 0, 0]}>
+                <LabelList dataKey="count" position="top" style={{ fill: '#374151', fontWeight: 'bold' }} /> {/* FIX: Labels added */}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
-        {/* Pie Chart */}
         <div style={{
-          flex: "2", minWidth: 270, background: "#f9fafc",
-          borderRadius: 15, padding: "18px 8px", boxShadow: "0 2px 12px #ffb30022", position: "relative"
+          flex: "2", minWidth: 270, background: "#fff", borderRadius: 15, padding: "18px 8px", boxShadow: "0 2px 12px rgba(0,0,0,0.08)", position: "relative"
         }}>
-          <div style={{
-            fontWeight: 700, fontSize: 18, marginBottom: 13, color: "#607d8b",
-            letterSpacing: ".2px"
-          }}>Review Breakdown</div>
+          <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 13, color: "#607d8b", letterSpacing: ".2px" }}>
+            Review Breakdown
+          </div>
           <ResponsiveContainer width="99%" height={238}>
             <PieChart>
-              <Pie
-                data={feedbackTypeData}
-                cx="50%" cy="50%"
-                labelLine={false}
-                label={({ name, value, percent, cx, cy, midAngle, outerRadius }) => {
-                  const RADIAN = Math.PI / 180;
-                  const radius = outerRadius + 20;
-                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                  return (
-                    <text
-                      x={x}
-                      y={y}
-                      fill="#283593"
-                      textAnchor={x > cx ? "start" : "end"}
-                      dominantBaseline="central"
-                      style={{
-                        fontWeight: 600,
-                        fontSize: 14.8,
-                        textShadow: "0 2px 8px #fff",
-                        paintOrder: "stroke",
-                        stroke: "#fff",
-                        strokeWidth: 3
-                      }}
-                    >
-                      {name}: {value} ({(percent * 100).toFixed(1)}%)
-                    </text>
-                  );
-                }}
-                dataKey="value"
-                nameKey="name"
-                innerRadius={52} outerRadius={82}
-                paddingAngle={2}
-                isAnimationActive
-              >
+              <Pie data={feedbackTypeData} cx="50%" cy="50%" labelLine={false}
+                label={({ name, value, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                dataKey="value" nameKey="name" innerRadius={52} outerRadius={82} paddingAngle={2}>
                 {feedbackTypeData.map((e, idx) =>
                   <Cell key={e.name} fill={PIE_COLORS[idx % PIE_COLORS.length]} stroke="#fff" strokeWidth={2} />
                 )}
               </Pie>
-              <Tooltip formatter={(val, name, p) =>
-                [val, p && p && p.payload ? p.payload.name : name]
-              } />
+              <Tooltip formatter={(value, name) => [value, name]} />
+              <Legend />
             </PieChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* ================= REVIEW TABLE SECTION ================ */}
-      <div style={{
-        margin: "50px 0 30px 0", fontSize: 20, color: "#8e24aa", // Changed color
-        fontWeight: 800, paddingTop: 25
-      }}>All Reviews ({reviews.length})</div>
-      {(isLoading || (!reviews || reviews.length === 0)) && (
-        <div style={{
-          textAlign: 'center', margin: '26px', fontSize: 16,
-          color: COLORS_PANELS.tnps, fontWeight: 600
-        }}>
-          {isLoading ? 'Loading...' : 'No reviews found to display.'}
-        </div>
-      )}
-      {!isLoading && reviews.length > 0 && (
-        <div style={{
-          overflowX: 'auto',
-          background: "#fff", borderRadius: 11,
-          boxShadow: "0 2px 18px #ab47bc11", // Changed shadow
-          padding: 16
-        }}>
-          <table style={{
-            minWidth: 1170, borderCollapse: 'collapse', fontFamily: FONT_FAMILY
-          }}>
-            <thead>
-              <tr style={{
-                background: "#f3e5f5", fontWeight: "bold", fontSize: 15, color: "#8e24aa" // Changed background/color
-              }}>
-                <th style={{ padding: "10px 7px" }}>Rating</th>
-                <th style={{ padding: "10px 7px" }}>Customer Name</th>
-                <th style={{ padding: "10px 7px" }}>Customer Mobile</th>
-                <th style={{ padding: "10px 7px" }}>Client Email</th>
-                {/* Branch column removed as it's implicit for branch admin */}
-                <th style={{ padding: "10px 7px" }}>Transcribed Text</th>
-                <th style={{ padding: "10px 7px" }}>Voice Audio</th>
-                <th style={{ padding: "10px 7px" }}>Invoice Data</th>
-                <th style={{ padding: "10px 7px" }}>Date</th>
+      {/* ================= REVIEW TABLE SECTION (REWRITTEN) ================ */}
+      <div style={{ margin: "50px 0 30px 0", fontSize: 20, color: "#8e24aa", fontWeight: 800, paddingTop: 25 }}>
+        All Reviews ({reviews.length})
+      </div>
+      <div className="overflow-x-auto rounded-xl shadow-lg border border-gray-200 w-full">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer Name</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mobile</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client Email</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">VIN</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job Card</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice No</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice Date</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice File</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transcribed Text</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Review Date</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Voice Audio</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {reviews.map((review) => (
+              <tr key={review._id} className="hover:bg-gray-50 transition-colors duration-200">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{review.customerName || 'N/A'}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{review.customerMobile || 'N/A'}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{review.client?.email || 'N/A'}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{review.invoiceData?.vin || 'N/A'}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{review.invoiceData?.jobCardNumber || 'N/A'}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{review.invoiceData?.invoiceNumber || 'N/A'}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{review.invoiceData?.invoiceDate ? formatDate(review.invoiceData.invoiceDate) : 'N/A'}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600">
+                  {review.invoiceFileUrl ? (<a href={review.invoiceFileUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">View File</a>) : ('N/A')}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-700">
+                  <div className="h-24 w-96 overflow-y-auto whitespace-normal break-words">
+                    {review.transcribedText || 'N/A'}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{review.createdAt ? formatDate(review.createdAt) : 'N/A'}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-lg font-medium text-gray-900">
+                  {review.rating ?? 'N/A'} <span className="text-2xl">{getRatingEmoji(review.rating)}</span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {review.voiceData ? (<audio controls src={review.voiceData} className="w-full max-w-[250px] h-10 rounded-lg"></audio>) : 'N/A'}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {reviews.map((review, i) => (
-                <tr key={review._id || i} style={{ background: i % 2 === 0 ? "#f9f5fa" : "#fff" }}> {/* Changed background */}
-                  <td style={{ padding: "7px 5px", fontWeight: 700, color: "#388e3c" }}>{review.rating}</td>
-                  <td style={{ padding: "7px 5px" }}>{review.customerName}</td>
-                  <td style={{ padding: "7px 5px" }}>{review.customerMobile}</td>
-                  <td style={{ padding: "7px 5px" }}>{review.client?.email || 'N/A'}</td>
-                  <td style={{ padding: "7px 5px" }}>{review.transcribedText || review.textReview || 'N/A'}</td>
-                  <td style={{ padding: "7px 5px" }}>
-                    {review.voiceData ? (
-                      <audio controls style={{ width: 130 }}>
-                        <source src={review.voiceData} type="audio/mpeg" />
-                        Your browser does not support the audio element.
-                      </audio>
-                    ) : 'N/A'}
-                  </td>
-                  <td style={{ padding: "7px 5px", fontSize: 13 }}>
-                    {review.invoiceData ? (
-                      <div style={{ whiteSpace: 'pre-line', lineHeight: 1.4, }}>
-                        {review.invoiceData.jobCardNumber && <>Job Card: {review.invoiceData.jobCardNumber}<br /></>}
-                        {review.invoiceData.invoiceNumber && <>Invoice No: {review.invoiceData.invoiceNumber}<br /></>}
-                        {review.invoiceData.invoiceDate && <>Inv Date: {review.invoiceData.invoiceDate}<br /></>}
-                        {review.invoiceData.vin && <>VIN: {review.invoiceData.vin}<br /></>}
-                        {review.invoiceData.customerNameFromInvoice && <>Cust Name (Inv): {review.invoiceData.customerNameFromInvoice}<br /></>}
-                        {review.invoiceData.customerMobileFromInvoice && <>Cust Mobile (Inv): {review.invoiceData.customerMobileFromInvoice}<br /></>}
-                        {review.invoiceFileUrl &&
-                          (<a href={review.invoiceFileUrl} target='_blank' rel='noopener noreferrer' style={{ color: "#8e24aa" }}>View File</a>)} {/* Changed color */}
-                      </div>
-                    ) : 'N/A'}
-                  </td>
-                  <td style={{ padding: "7px 5px" }}>
-                    {review.createdAt ? new Date(review.createdAt).toLocaleDateString() : 'N/A'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-      {/* Error below the grid */}
       {error && (
-        <div style={{
-          color: COLORS_PANELS.detractors, margin: "19px 0", fontWeight: 600, fontSize: 15.5
-        }}>{error}</div>
+        <div style={{ color: COLORS_PANELS.detractors, margin: "19px 0", fontWeight: 600, fontSize: 15.5 }}>
+          {error}
+        </div>
       )}
     </div>
   );
