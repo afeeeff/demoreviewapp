@@ -28,17 +28,7 @@ const allowedOrigins = [
       'http://localhost:5175',
       'http://localhost:5176',
        // Your local Vite development server (if using Vite default)
-      'https://branch-frontend.onrender.com',
-      'https://superuser-frontend.onrender.com',
-      'https://company-frontend-tdh3.onrender.com',
-      'https://review-app-frontend.onrender.com',
-      'https://superuser.instantreviews.in',
-      'https://company.instantreviews.in',
-      'https://branch.instantreviews.in',
-      'https://client.instantreviews.in',
-      'https://review-app-orpin.vercel.app',
-      'https://branchfront.vercel.app',
-      'https://client-gray-five.vercel.app'
+      
 
        // <--- REPLACE THIS WITH YOUR ACTUAL DEPLOYED FRONTEND URL
       // Add any other specific frontend origins if you have them (e.g., a staging frontend)
