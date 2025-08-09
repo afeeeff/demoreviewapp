@@ -33,7 +33,7 @@ const App = () => {
   // Base URL for your backend API
   const API_BASE_URL = window.location.hostname === 'localhost'
     ? 'http://localhost:5000/api'
-    : 'https://review-app-backend-ekjk.onrender.com/api';
+    : 'https://demoreviewapp.onrender.com/api';
 
   // Helper to get auth headers
   const getAuthHeaders = () => ({

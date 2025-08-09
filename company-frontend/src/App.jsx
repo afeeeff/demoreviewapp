@@ -39,7 +39,7 @@ const App = () => {
   const API_BASE_URL =
     window.location.hostname === 'localhost'
       ? 'http://localhost:5000/api'
-      : 'https://review-app-backend-ekjk.onrender.com/api'; // IMPORTANT: Change this to your backend URL in production
+      : 'https://demoreviewapp.onrender.com/api'; // IMPORTANT: Change this to your backend URL in production
 
   // Helper to get auth headers
   const getAuthHeaders = useCallback(() => ({

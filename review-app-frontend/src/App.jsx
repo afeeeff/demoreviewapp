@@ -46,7 +46,7 @@ const App = () => {
   const API_BASE_URL =
     window.location.hostname === 'localhost'
       ? 'http://localhost:5000/api'
-      : 'https://review-app-backend-ekjk.onrender.com/api';
+      : 'https://demoreviewapp.onrender.com/api';
 
   // Handle logout
   const handleLogout = useCallback(() => {
