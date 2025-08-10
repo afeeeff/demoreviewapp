@@ -230,8 +230,14 @@ const App = () => {
 
   // Render the login view
   const renderLogin = () => (
-    <div className="min-h-screen flex items-center justify-center p-4 font-sans"> {/* Removed bg-gradient-to-br from here */}
-      <div className="bg-white p-10 rounded-2xl shadow-xl w-full max-w-md transform transition-all duration-500 hover:scale-[1.02] border border-blue-200"> {/* Light card */}
+  // Main container that centers everything
+  <div className="min-h-screen flex items-center justify-center p-4 font-sans bg-gray-100">
+
+    {/* Wrapper for side-by-side cards on medium screens and up */}
+    <div className="flex flex-col md:flex-row items-center justify-center gap-10">
+
+      {/* Existing Login Form Card */}
+      <div className="bg-white p-10 rounded-2xl shadow-xl w-full max-w-md transform transition-all duration-500 hover:scale-[1.02] border border-blue-200">
         <h2 className="text-4xl font-extrabold text-center text-blue-700 mb-8 tracking-tight">Client Login</h2>
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
@@ -280,8 +286,28 @@ const App = () => {
           </button>
         </form>
       </div>
+
+      {/* NEW Demo Credentials Card */}
+      <div className="bg-blue-50 p-8 rounded-2xl shadow-xl w-full max-w-md transform transition-all duration-500 hover:scale-[1.02] border border-blue-200">
+        <h3 className="text-2xl font-bold text-center text-blue-700 mb-6 tracking-tight">Demo Credentials</h3>
+        <div className="space-y-4 text-lg">
+          <div className="flex flex-col">
+            <span className="font-semibold text-gray-600 mb-1">Email:</span>
+            <code className="bg-blue-100 text-blue-800 p-2 rounded-md font-mono break-all">afeefclient1@instantreviews.in</code>
+          </div>
+          <div className="flex flex-col">
+            <span className="font-semibold text-gray-600 mb-1">Password:</span>
+            <code className="bg-blue-100 text-blue-800 p-2 rounded-md font-mono">123456</code>
+          </div>
+        </div>
+        <p className="mt-6 text-sm text-gray-500 text-center">
+          Feel free to use these credentials to explore the client dashboard.
+        </p>
+      </div>
+
     </div>
-  );
+  </div>
+);
 
   // Render the "Start Taking Review" screen
   const renderStartReviewScreen = () => (

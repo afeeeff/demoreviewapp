@@ -227,48 +227,77 @@ const App = () => {
     <div className="font-sans antialiased text-gray-900 min-h-screen">
       {/* LOGIN PAGE */}
       {currentView === 'login' && (
-        <div className="flex flex-col items-center justify-center min-h-screen p-4">
-          <div className="font-extrabold text-4xl mb-8 text-blue-700 tracking-wide">Superuser Login</div>
-          <form className="w-full max-w-sm bg-white p-8 rounded-2xl shadow-xl border border-gray-200" onSubmit={handleLogin}>
-            <div className="mb-5">
-              <input
-                type="email"
-                placeholder="Email"
-                value={email}
-                required
-                className="w-full px-4 py-2 text-lg rounded-lg border-2 border-blue-200 focus:outline-none focus:border-blue-500 transition-all duration-200"
-                onChange={e => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="mb-6">
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                required
-                className="w-full px-4 py-2 text-lg rounded-lg border-2 border-blue-200 focus:outline-none focus:border-blue-500 transition-all duration-200"
-                onChange={e => setPassword(e.target.value)}
-              />
-            </div>
-            {loginError && <div className="text-red-600 mb-4 font-semibold text-center">{loginError}</div>}
-            <button
-              type="submit"
-              className="w-full py-3 bg-blue-600 text-white font-bold text-lg rounded-lg shadow-md hover:bg-blue-700 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              disabled={isLoading}
+  // Main container with a light background
+  <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-100">
+    <div className="font-extrabold text-5xl mb-12 text-blue-700 tracking-wide text-center">Superuser Dashboard</div>
+    
+    {/* Wrapper for the cards, enabling side-by-side layout on large screens */}
+    <div className="flex flex-col lg:flex-row items-stretch gap-10">
+
+      {/* Login Form Card */}
+      <div className="w-full max-w-sm bg-white p-8 rounded-2xl shadow-xl border border-gray-200 transform hover:scale-105 transition-all duration-300">
+        <h3 className="text-3xl font-bold text-center text-gray-800 mb-8">Login</h3>
+        <form onSubmit={handleLogin}>
+          <div className="mb-5">
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              required
+              className="w-full px-4 py-2 text-lg rounded-lg border-2 border-blue-200 focus:outline-none focus:border-blue-500 transition-all duration-200"
+              onChange={e => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="mb-6">
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              required
+              className="w-full px-4 py-2 text-lg rounded-lg border-2 border-blue-200 focus:outline-none focus:border-blue-500 transition-all duration-200"
+              onChange={e => setPassword(e.target.value)}
+            />
+          </div>
+          {loginError && <div className="text-red-600 mb-4 font-semibold text-center">{loginError}</div>}
+          <button
+            type="submit"
+            className="w-full py-3 bg-blue-600 text-white font-bold text-lg rounded-lg shadow-md hover:bg-blue-700 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Logging in...' : 'Login'}
+          </button>
+          <div className="mt-4 text-center">
+            <span
+              className="cursor-pointer text-blue-600 hover:underline text-base font-medium"
+              onClick={() => setCurrentView('forgotPassword')}
             >
-              {isLoading ? 'Logging in...' : 'Login'}
-            </button>
-            <div className="mt-4 text-center">
-              <span
-                className="cursor-pointer text-blue-600 hover:underline text-base font-medium"
-                onClick={() => setCurrentView('forgotPassword')}
-              >
-                Forgot Password?
-              </span>
-            </div>
-          </form>
+              Forgot Password?
+            </span>
+          </div>
+        </form>
+      </div>
+
+      {/* NEW Demo Credentials Card */}
+      <div className="w-full max-w-sm bg-blue-50 p-8 rounded-2xl shadow-xl border border-blue-200 flex flex-col justify-center transform hover:scale-105 transition-all duration-300">
+        <h3 className="text-2xl font-bold text-center text-blue-700 mb-6 tracking-tight">Demo Credentials</h3>
+        <div className="space-y-4 text-lg">
+          <div className="flex flex-col">
+            <span className="font-semibold text-gray-600 mb-1">Email:</span>
+            <code className="bg-blue-100 text-blue-800 p-2 rounded-md font-mono whitespace-nowrap overflow-x-auto">superuser@instantreviews.in</code>
+          </div>
+          <div className="flex flex-col">
+            <span className="font-semibold text-gray-600 mb-1">Password:</span>
+            <code className="bg-blue-100 text-blue-800 p-2 rounded-md font-mono">123456</code>
+          </div>
         </div>
-      )}
+        <p className="mt-6 text-sm text-gray-500 text-center">
+          Use these credentials to access the superuser dashboard and manage companies.
+        </p>
+      </div>
+
+    </div>
+  </div>
+)}
       {/* FORGOT PASSWORD PAGE */}
       {currentView === 'forgotPassword' && (
         <div className="flex flex-col items-center justify-center min-h-screen p-4">
