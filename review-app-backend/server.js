@@ -29,7 +29,9 @@ const allowedOrigins = [
       'http://localhost:5176',
       
       'https://demoreviewapp.vercel.app',
-      'https://demouser.instantreviews.in'
+      'https://demouser.instantreviews.in',
+      'http://demosuperuser.instantreviews.in',
+      'https://pg-gbtd.vercel.app'
 
        // Your local Vite development server (if using Vite default)
       
