@@ -5,6 +5,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const User = require('../models/User'); // Import the new User model
 const bcrypt = require('bcryptjs');
+const { loginUser, changePassword } = require('../controllers/authController');
 const authController = require('../controllers/authController'); // Import authController
 const { protect } = require('../middleware/authMiddleware'); // Import protect middleware
 
@@ -83,6 +84,12 @@ router.post('/reset-password-with-otp', authController.resetPasswordWithOTP);
 // @route   PUT /api/auth/change-password
 // @access  Private
 router.put('/change-password', protect, authController.changePassword);
+// NEW: Route to verify token validity
+router.get('/verify', protect, (req, res) => {
+  // If the 'protect' middleware passes, the token is valid.
+  // Send back the user data attached by the middleware.
+  res.status(200).json(req.user);
+});
 
 
 module.exports = router;

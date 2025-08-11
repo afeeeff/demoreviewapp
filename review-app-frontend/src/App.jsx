@@ -163,6 +163,48 @@ const App = () => {
       setIsLoading(false);
     }
   };
+  useEffect(() => {
+    const verifyToken = async () => {
+      const storedToken = localStorage.getItem('jwtToken');
+      if (!storedToken) {
+        handleLogout(); // Ensure a clean state if no token
+        return;
+      }
+
+      setIsLoading(true); // Show a loading state during verification
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/verify`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${storedToken}`,
+          },
+        });
+
+        const data = await parseResponse(response);
+
+        if (response.ok) {
+          // Token is valid, backend returns fresh user data
+          const freshUserData = { ...data, clientId: data._id, token: storedToken };
+          localStorage.setItem('clientUserData', JSON.stringify(freshUserData));
+          setClientId(data._id);
+          setToken(storedToken);
+          setUserData(freshUserData);
+          setCurrentView('startReview');
+        } else {
+          // Token is invalid or expired, handle logout
+          console.warn("Token verification failed, logging out.");
+          handleLogout();
+        }
+      } catch (error) {
+        console.error('Failed to connect to verification endpoint:', error);
+        handleLogout(); // Logout on network error
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    verifyToken();
+  }, [handleLogout]);
 
   // Function to get initials for profile icon
   const getInitials = (name, email) => {
@@ -229,71 +271,157 @@ const App = () => {
 
 
   // Render the login view
-  const renderLogin = () => (
+  // A simple, fun game component to keep users engaged
+const ColorMatchGame = () => {
+  const colors = [
+    { name: 'Red', class: 'text-red-500' },
+    { name: 'Blue', class: 'text-blue-500' },
+    { name: 'Green', class: 'text-green-500' },
+    { name: 'Yellow', class: 'text-yellow-500' },
+    { name: 'Purple', class: 'text-purple-500' },
+  ];
+
+  const [score, setScore] = React.useState(0);
+  const [targetWord, setTargetWord] = React.useState('');
+  const [targetColorClass, setTargetColorClass] = React.useState('');
+  const [options, setOptions] = React.useState([]);
+
+  const generateNewRound = () => {
+    // Pick a random word
+    const word = colors[Math.floor(Math.random() * colors.length)];
+    // Pick a random color, but make sure it's different from the word's color
+    let color;
+    do {
+      color = colors[Math.floor(Math.random() * colors.length)];
+    } while (color.name === word.name);
+    
+    setTargetWord(word.name);
+    setTargetColorClass(color.class);
+
+    // Create shuffled options for buttons
+    const correctOption = word;
+    const incorrectOptions = colors.filter(c => c.name !== correctOption.name);
+    const shuffledOptions = [correctOption, ...incorrectOptions.sort(() => 0.5 - Math.random()).slice(0, 2)];
+    setOptions(shuffledOptions.sort(() => 0.5 - Math.random()));
+  };
+  
+  const handleGuess = (guess) => {
+    if (guess === targetWord) {
+      setScore(prevScore => prevScore + 1);
+    }
+    generateNewRound();
+  };
+
+  React.useEffect(() => {
+    generateNewRound();
+  }, []);
+
+  return (
+    <div className="w-full text-center p-4 border-t-2 border-dashed border-gray-200 mt-6">
+      <p className="text-sm font-medium text-gray-600 mb-2">Match the WORD, not the color!</p>
+      <div className="flex justify-between items-center mb-4">
+          <h4 className={`text-4xl font-extrabold transition-all duration-300 ${targetColorClass}`}>{targetWord}</h4>
+          <div className="text-lg font-bold text-gray-700 bg-gray-100 px-3 py-1 rounded-lg">Score: {score}</div>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {options.map((option) => (
+          <button
+            key={option.name}
+            onClick={() => handleGuess(option.name)}
+            className="py-2 px-3 bg-gray-200 text-gray-800 font-semibold rounded-md hover:bg-gray-300 transition-all transform hover:scale-105"
+          >
+            {option.name}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+
+const renderLogin = () => (
   // Main container that centers everything
   <div className="min-h-screen flex items-center justify-center p-4 font-sans bg-gray-100">
-
     {/* Wrapper for side-by-side cards on medium screens and up */}
     <div className="flex flex-col md:flex-row items-center justify-center gap-10">
 
-      {/* Existing Login Form Card */}
+      {/* Login Form & Loading State Card */}
       <div className="bg-white p-10 rounded-2xl shadow-xl w-full max-w-md transform transition-all duration-500 hover:scale-[1.02] border border-blue-200">
-        <h2 className="text-4xl font-extrabold text-center text-blue-700 mb-8 tracking-tight">Client Login</h2>
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div>
-            <label htmlFor="username" className="block text-lg font-medium text-gray-700 mb-2">Email</label>
-            <input
-              type="email"
-              id="username"
-              className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-lg transition duration-200 bg-gray-50 text-gray-800 placeholder-gray-400"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              autoComplete="username"
-            />
+        
+        {/* We use a ternary operator to switch between the form and the loading screen */}
+        {isLoading ? (
+          // LOADING STATE UI
+          <div className="text-center">
+            <h2 className="text-3xl font-bold text-blue-700 mb-4">Connecting...</h2>
+            
+            <div className="flex justify-center items-center mb-6">
+              <svg className="animate-spin h-8 w-8 text-blue-600" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+            
+            {/* NEW loading message */}
+            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md mb-6" role="alert">
+              <p className="font-bold">Please be patient!</p>
+              <p className="text-sm">This is a demo hosted on a free server. The first login can take 15-20 seconds to wake it up.</p>
+            </div>
+            
+            {/* NEW brainy game */}
+            <ColorMatchGame />
+
           </div>
-          <div>
-            <label htmlFor="password" className="block text-lg font-medium text-gray-700 mb-2">Password</label>
-            <input
-              type="password"
-              id="password"
-              className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-lg transition duration-200 bg-gray-50 text-gray-800 placeholder-gray-400"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
-          </div>
-          {loginError && (
-            <p className="text-red-600 text-sm font-medium text-center bg-red-100 p-3 rounded-lg border border-red-300">{loginError}</p>
-          )}
-          <button
-            type="submit"
-            className="w-full flex justify-center py-3 px-6 border border-transparent rounded-lg shadow-md text-xl font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300 ease-in-out transform hover:scale-105"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <svg className="animate-spin h-5 w-5 text-white mr-3" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Logging In...
-              </>
-            ) : (
-              'Login'
-            )}
-          </button>
-        </form>
+        ) : (
+          // DEFAULT LOGIN FORM
+          <>
+            <h2 className="text-4xl font-extrabold text-center text-blue-700 mb-8 tracking-tight">Client Login</h2>
+            <form onSubmit={handleLogin} className="space-y-6">
+              <div>
+                <label htmlFor="username" className="block text-lg font-medium text-gray-700 mb-2">Email</label>
+                <input
+                  type="email"
+                  id="username"
+                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-lg transition duration-200 bg-gray-50 text-gray-800 placeholder-gray-400"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  autoComplete="username"
+                />
+              </div>
+              <div>
+                <label htmlFor="password" className="block text-lg font-medium text-gray-700 mb-2">Password</label>
+                <input
+                  type="password"
+                  id="password"
+                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-lg transition duration-200 bg-gray-50 text-gray-800 placeholder-gray-400"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                />
+              </div>
+              {loginError && (
+                <p className="text-red-600 text-sm font-medium text-center bg-red-100 p-3 rounded-lg border border-red-300">{loginError}</p>
+              )}
+              <button
+                type="submit"
+                className="w-full flex justify-center py-3 px-6 border border-transparent rounded-lg shadow-md text-xl font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300 ease-in-out transform hover:scale-105"
+                disabled={isLoading}
+              >
+                Login
+              </button>
+            </form>
+          </>
+        )}
       </div>
 
-      {/* NEW Demo Credentials Card */}
+      {/* Demo Credentials Card (remains unchanged) */}
       <div className="bg-blue-50 p-8 rounded-2xl shadow-xl w-full max-w-md transform transition-all duration-500 hover:scale-[1.02] border border-blue-200">
         <h3 className="text-2xl font-bold text-center text-blue-700 mb-6 tracking-tight">Demo Credentials</h3>
         <div className="space-y-4 text-lg">
           <div className="flex flex-col">
             <span className="font-semibold text-gray-600 mb-1">Email:</span>
-            <code className="bg-blue-100 text-blue-800 p-2 rounded-md font-mono break-all">afeefclient1@instantreviews.in</code>
+            <code className="bg-blue-100 text-blue-800 p-2 rounded-md font-mono whitespace-nowrap overflow-x-auto">afeefclient1@instantreviews.in</code>
           </div>
           <div className="flex flex-col">
             <span className="font-semibold text-gray-600 mb-1">Password:</span>
